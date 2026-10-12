@@ -15,6 +15,7 @@
   #title { flex:1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:120px; }
   #toc { max-width:220px; padding:4px; }
   .grp { display:inline-flex; align-items:center; gap:3px; font-size:.85rem; color:#c9d4df; }
+  #flipbtn.on { background:#1d5fbf; border-color:#fff; }
   .grp button { min-width:30px; padding:3px 6px; border:1px solid #8aa0b5; background:#3d5368; color:#fff; border-radius:4px; cursor:pointer; }
   #wrap { position:relative; height:calc(100% - 110px); max-width:900px; margin:0 auto; }
   #viewer { height:100%; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.12); }
@@ -30,7 +31,7 @@
   <span id="title">Loading…</span>
   <select id="toc"><option>Contents</option></select>
   <span class="grp">Text <button id="fminus">A&minus;</button><button id="fplus">A+</button></span>
-  <span class="grp">Board <button id="bminus">&minus;</button><button id="bplus">+</button></span>
+  <span class="grp">Board <button id="bminus">&minus;</button><button id="bplus">+</button><button id="flipbtn" title="Show the boards from Black's side">&#8645; Flip</button></span>
   <a id="dl" href="#" download>Download</a>
 </div>
 <div id="wrap">
@@ -47,6 +48,7 @@
   const params = new URLSearchParams(location.search);
   const file = params.get("book");
   const niceTitle = params.get("title");
+  const flipDir = params.get("flip");   // folder with Black-at-the-bottom boards
   const msg = document.getElementById("msg");
 
   if (!file) {
@@ -79,6 +81,43 @@
     document.getElementById("fminus").onclick = () => { fontPct = Math.max(70,  fontPct - 10); resize(); };
     document.getElementById("bplus").onclick  = () => { boardPx = Math.min(500, boardPx + 40); resize(); };
     document.getElementById("bminus").onclick = () => { boardPx = Math.max(140, boardPx - 40); resize(); };
+
+    // ---- Flip board: swap each diagram for its Black-at-the-bottom copy ----
+    const flipBtn = document.getElementById("flipbtn");
+    let flipped = false;
+    if (!flipDir) flipBtn.style.display = "none";
+    try { flipped = !!flipDir && localStorage.getItem("flip:" + file) === "1"; } catch (e) {}
+    const nameOf = src => {
+      const r = book.resources;
+      if (r && r.replacementUrls) {
+        const i = r.replacementUrls.indexOf(src);
+        if (i >= 0) return r.urls[i].split("/").pop();
+      }
+      return src.split("/").pop().split("?")[0];
+    };
+    const flipImages = contents => {
+      contents.document.querySelectorAll("div.dia img").forEach(img => {
+        if (!img.dataset.orig) {
+          img.dataset.orig = img.getAttribute("src");
+          img.dataset.name = nameOf(img.dataset.orig);
+        }
+        const want = flipped
+          ? new URL("books/flipped/" + flipDir + "/" + img.dataset.name, location.href).href
+          : img.dataset.orig;
+        if (img.getAttribute("src") !== want) {
+          img.onerror = () => { img.onerror = null; img.src = img.dataset.orig; };
+          img.src = want;
+        }
+      });
+    };
+    rendition.hooks.content.register(flipImages);
+    const showFlip = () => { flipBtn.classList.toggle("on", flipped); };
+    showFlip();
+    flipBtn.onclick = () => {
+      flipped = !flipped; showFlip();
+      try { localStorage.setItem("flip:" + file, flipped ? "1" : "0"); } catch (e) {}
+      rendition.getContents().forEach(flipImages);
+    };
 
     let saved = null;
     try { saved = localStorage.getItem(saveKey); } catch (e) {}

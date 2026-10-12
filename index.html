@@ -42,16 +42,19 @@
     {
       title: "New York 1924 – Vol. 1",
       file: "New_York_1924_Vol_1.epub",
+      flipped: "New_York_1924_Vol_1",
       description: "New York International Tournament 1924, Rounds 1–5."
     },
     {
       title: "New York 1924 – Vol. 2",
       file: "New_York_1924_Vol_2.epub",
+      flipped: "New_York_1924_Vol_2",
       description: "New York International Tournament 1924, Rounds 6–12."
     },
     {
       title: "New York 1924 – Vol. 3",
       file: "New_York_1924_Vol_3.epub",
+      flipped: "New_York_1924_Vol_3",
       description: "New York International Tournament 1924, Rounds 13–22."
     },
     // To add a book, copy a block above and change the three lines:
@@ -76,7 +79,8 @@
       "<a class='btn dl' download>Download EPUB</a></div>";
     div.querySelector("h2").textContent = b.title;
     div.querySelector("p").textContent = b.description || "";
-    div.querySelector(".read").href = "reader.html?book=" + encodeURIComponent(b.file) + "&title=" + encodeURIComponent(b.title);
+    div.querySelector(".read").href = "reader.html?book=" + encodeURIComponent(b.file) + "&title=" + encodeURIComponent(b.title)
+      + (b.flipped ? "&flip=" + encodeURIComponent(b.flipped) : "");
     div.querySelector(".dl").href = path;
     list.appendChild(div);
   });
