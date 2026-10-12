@@ -76,7 +76,7 @@
       "<a class='btn dl' download>Download EPUB</a></div>";
     div.querySelector("h2").textContent = b.title;
     div.querySelector("p").textContent = b.description || "";
-    div.querySelector(".read").href = "reader.html?book=" + encodeURIComponent(b.file);
+    div.querySelector(".read").href = "reader.html?book=" + encodeURIComponent(b.file) + "&title=" + encodeURIComponent(b.title);
     div.querySelector(".dl").href = path;
     list.appendChild(div);
   });

@@ -14,7 +14,9 @@
   #bar a { color:#fff; text-decoration:none; }
   #title { flex:1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:120px; }
   #toc { max-width:220px; padding:4px; }
-  #wrap { position:relative; height:calc(100% - 96px); max-width:900px; margin:0 auto; }
+  .grp { display:inline-flex; align-items:center; gap:3px; font-size:.85rem; color:#c9d4df; }
+  .grp button { min-width:30px; padding:3px 6px; border:1px solid #8aa0b5; background:#3d5368; color:#fff; border-radius:4px; cursor:pointer; }
+  #wrap { position:relative; height:calc(100% - 110px); max-width:900px; margin:0 auto; }
   #viewer { height:100%; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.12); }
   #nav { display:flex; justify-content:space-between; align-items:center; max-width:900px; margin:0 auto; padding:8px 12px; }
   #nav button { padding:8px 18px; border:1px solid #1d5fbf; background:#fff; color:#1d5fbf; border-radius:6px; cursor:pointer; }
@@ -27,6 +29,8 @@
   <a href="index.html">&larr; Library</a>
   <span id="title">Loading…</span>
   <select id="toc"><option>Contents</option></select>
+  <span class="grp">Text <button id="fminus">A&minus;</button><button id="fplus">A+</button></span>
+  <span class="grp">Board <button id="bminus">&minus;</button><button id="bplus">+</button></span>
   <a id="dl" href="#" download>Download</a>
 </div>
 <div id="wrap">
@@ -42,6 +46,7 @@
 <script>
   const params = new URLSearchParams(location.search);
   const file = params.get("book");
+  const niceTitle = params.get("title");
   const msg = document.getElementById("msg");
 
   if (!file) {
@@ -54,14 +59,36 @@
     const book = ePub(url);
     const rendition = book.renderTo("viewer", { width:"100%", height:"100%", spread:"none" });
 
+    // Text and board size (remembered in this browser)
+    let fontPct = 125, boardPx = 280;
+    try {
+      fontPct = parseInt(localStorage.getItem("fontPct")) || fontPct;
+      boardPx = parseInt(localStorage.getItem("boardPx")) || boardPx;
+    } catch (e) {}
+    const applySizes = () => {
+      rendition.themes.override("font-size", fontPct + "%", true);
+      rendition.themes.default({
+        "div.dia img": { "width": "100% !important", "max-width": boardPx + "px !important", "height": "auto !important" },
+        "p": { "line-height": "1.5 !important" }
+      });
+      try { localStorage.setItem("fontPct", fontPct); localStorage.setItem("boardPx", boardPx); } catch (e) {}
+    };
+    applySizes();
+    const resize = () => { applySizes(); const loc = rendition.currentLocation(); if (loc && loc.start) rendition.display(loc.start.cfi); };
+    document.getElementById("fplus").onclick  = () => { fontPct = Math.min(250, fontPct + 10); resize(); };
+    document.getElementById("fminus").onclick = () => { fontPct = Math.max(70,  fontPct - 10); resize(); };
+    document.getElementById("bplus").onclick  = () => { boardPx = Math.min(500, boardPx + 40); resize(); };
+    document.getElementById("bminus").onclick = () => { boardPx = Math.max(140, boardPx - 40); resize(); };
+
     let saved = null;
     try { saved = localStorage.getItem(saveKey); } catch (e) {}
     rendition.display(saved || undefined).then(() => { msg.style.display = "none"; })
       .catch(() => { msg.textContent = "Could not open " + file + ". Check the file name in the books folder."; });
 
     book.loaded.metadata.then(m => {
-      document.getElementById("title").textContent = m.title || file;
-      document.title = m.title || file;
+      const t = niceTitle || m.title || file;
+      document.getElementById("title").textContent = t;
+      document.title = t;
     });
 
     const toc = document.getElementById("toc");
