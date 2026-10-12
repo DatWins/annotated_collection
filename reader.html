@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book Reader</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+<style>
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:#f4f6f8; font-family:system-ui, sans-serif; color:#1f2a36; }
+  #bar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#2c3e50; color:#fff; flex-wrap:wrap; }
+  #bar a, #bar button, #bar select { font-size:.9rem; }
+  #bar a { color:#fff; text-decoration:none; }
+  #title { flex:1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:120px; }
+  #toc { max-width:220px; padding:4px; }
+  #wrap { position:relative; height:calc(100% - 96px); max-width:900px; margin:0 auto; }
+  #viewer { height:100%; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.12); }
+  #nav { display:flex; justify-content:space-between; align-items:center; max-width:900px; margin:0 auto; padding:8px 12px; }
+  #nav button { padding:8px 18px; border:1px solid #1d5fbf; background:#fff; color:#1d5fbf; border-radius:6px; cursor:pointer; }
+  #pct { color:#5b6b7b; font-size:.85rem; }
+  #msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:16px; color:#5b6b7b; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <a href="index.html">&larr; Library</a>
+  <span id="title">Loading…</span>
+  <select id="toc"><option>Contents</option></select>
+  <a id="dl" href="#" download>Download</a>
+</div>
+<div id="wrap">
+  <div id="viewer"></div>
+  <div id="msg">Loading book…</div>
+</div>
+<div id="nav">
+  <button id="prev">&lsaquo; Previous</button>
+  <span id="pct"></span>
+  <button id="next">Next &rsaquo;</button>
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const file = params.get("book");
+  const msg = document.getElementById("msg");
+
+  if (!file) {
+    msg.textContent = "No book chosen. Go back to the library.";
+  } else {
+    const url = "books/" + file;
+    document.getElementById("dl").href = url;
+    const saveKey = "pos:" + file;
+
+    const book = ePub(url);
+    const rendition = book.renderTo("viewer", { width:"100%", height:"100%", spread:"none" });
+
+    let saved = null;
+    try { saved = localStorage.getItem(saveKey); } catch (e) {}
+    rendition.display(saved || undefined).then(() => { msg.style.display = "none"; })
+      .catch(() => { msg.textContent = "Could not open " + file + ". Check the file name in the books folder."; });
+
+    book.loaded.metadata.then(m => {
+      document.getElementById("title").textContent = m.title || file;
+      document.title = m.title || file;
+    });
+
+    const toc = document.getElementById("toc");
+    book.loaded.navigation.then(nav => {
+      const add = (items, depth) => items.forEach(i => {
+        const o = document.createElement("option");
+        o.value = i.href;
+        o.textContent = "\u00a0\u00a0".repeat(depth) + i.label.trim();
+        toc.appendChild(o);
+        if (i.subitems && i.subitems.length) add(i.subitems, depth + 1);
+      });
+      add(nav.toc, 0);
+    });
+    toc.onchange = () => { if (toc.selectedIndex > 0) rendition.display(toc.value); toc.selectedIndex = 0; };
+
+    document.getElementById("prev").onclick = () => rendition.prev();
+    document.getElementById("next").onclick = () => rendition.next();
+    const keys = e => { if (e.key === "ArrowLeft") rendition.prev(); if (e.key === "ArrowRight") rendition.next(); };
+    document.addEventListener("keyup", keys);
+    rendition.on("keyup", keys);
+
+    // swipe on phones/tablets
+    let sx = null;
+    rendition.on("touchstart", e => { sx = e.changedTouches[0].screenX; });
+    rendition.on("touchend", e => {
+      if (sx === null) return;
+      const dx = e.changedTouches[0].screenX - sx;
+      if (dx > 50) rendition.prev(); else if (dx < -50) rendition.next();
+      sx = null;
+    });
+
+    book.ready.then(() => book.locations.generate(1200)).then(() => {
+      const show = loc => {
+        const p = book.locations.percentageFromCfi(loc.start.cfi);
+        document.getElementById("pct").textContent = Math.round(p * 100) + "%";
+      };
+      if (rendition.location) show(rendition.location);
+      rendition.on("relocated", show);
+    });
+
+    rendition.on("relocated", loc => {
+      try { localStorage.setItem(saveKey, loc.start.cfi); } catch (e) {}
+    });
+  }
+</script>
+</body>
+</html>
