@@ -71,6 +71,7 @@
       rendition.themes.override("font-size", fontPct + "%", true);
       rendition.themes.default({
         "div.dia img": { "width": "100% !important", "max-width": boardPx + "px !important", "height": "auto !important" },
+        "div.diag img": { "width": "100% !important", "max-width": boardPx + "px !important", "height": "auto !important" },
         "p": { "line-height": "1.5 !important" }
       });
       try { localStorage.setItem("fontPct", fontPct); localStorage.setItem("boardPx", boardPx); } catch (e) {}
@@ -96,7 +97,7 @@
       return src.split("/").pop().split("?")[0];
     };
     const flipImages = contents => {
-      contents.document.querySelectorAll("div.dia img").forEach(img => {
+      contents.document.querySelectorAll("div.dia img, div.diag img").forEach(img => {
         if (!img.dataset.orig) {
           img.dataset.orig = img.getAttribute("src");
           img.dataset.name = nameOf(img.dataset.orig);
